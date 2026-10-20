@@ -24,7 +24,9 @@
    - Right-handed only: the mirror layer and drag scroll are removed.
    - Left wheel clockwise scrolls up (stock scrolls down).
    - Control layer: Bottom Left enters the bootloader, Bottom Right flips the
-     vertical wheel direction. */
+     vertical wheel direction.
+   keymap.html is a visual reference of this keymap; update its KEYMAP data
+   block whenever the mapping changes. */
 
 #include QMK_KEYBOARD_H
 
