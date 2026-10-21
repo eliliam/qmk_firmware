@@ -218,3 +218,17 @@ These come from research into this tree; the file paths are in this repo.
 - Updating `AGENTS.md`, the readme, and the memory notes for the new flow.
 - How to test. The firmware is checked on the real mouse. The CLI's encoding
   can be unit-tested without hardware.
+
+## Implementation notes (2026-10-21)
+
+Where the build differs from the text above, the code and `AGENTS.md` win:
+
+- The CLI is a small uv project (`tools/`), not a single-file script.
+- `pointer.dpi` has no step. VIA's slider sets any value, and the sensor
+  driver rounds down to 100.
+- The CLI uses hidapi's `hidraw` module, and it skips replies meant for VIA.
+- The udev rule matches `ENV{ID_USB_INTERFACE_NUM}`, and it has no uaccess
+  tag: the hidraw nodes are already `root:users 0660`.
+- Accel drift allows ±1 slider step, because the module truncates.
+- `via_init_kb()` resets the dynamic keymap when the settings store is
+  missing (first flash, or a size change).
