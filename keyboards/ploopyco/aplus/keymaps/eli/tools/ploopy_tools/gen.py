@@ -10,7 +10,7 @@ import re
 import sys
 from pathlib import Path
 
-from .catalog import ACCEL_VIA_MAX, CATALOG_PATH, Catalog, Setting, load_catalog
+from .catalog import CATALOG_PATH, Catalog, Setting, load_catalog
 
 KEYMAP_DIR = CATALOG_PATH.parent
 HEADER_PATH = KEYMAP_DIR / "settings_catalog.h"
@@ -34,6 +34,7 @@ def _store_settings(cat: Catalog) -> list[Setting]:
 
 def render_header(cat: Catalog) -> str:
     store = _store_settings(cat)
+    takeoff = cat.setting("accel.takeoff")
     rows = " \\\n".join(
         f"    X({s.c_name}, {s.id}, {_ctype(s)}, {s.raw_default}, {int(s.min)}, {int(s.max)})"
         for s in store
@@ -50,6 +51,9 @@ def render_header(cat: Catalog) -> str:
 #define ELI_SETTINGS_STORE_OFFSET {cat.store_offset}
 #define ELI_SETTINGS_MARKER_ID {MARKER_ID}
 #define ELI_SETTINGS_MAGIC 0x{MAGIC:02X}
+/* Lowest accel takeoff (channel 24, id 1) on the module's 0..60000 slider
+   scale; the module's own VIA setter does not enforce it. */
+#define ELI_ACCEL_TAKEOFF_MIN_RAW {int.from_bytes(takeoff.encode(takeoff.min), "big")}
 
 _Static_assert(VIA_EEPROM_CUSTOM_CONFIG_SIZE == {cat.custom_config_size}, "VIA_EEPROM_CUSTOM_CONFIG_SIZE must match settings.toml");
 
@@ -112,7 +116,9 @@ def _control(s: Setting) -> dict:
         options = [[o.replace("_", " ").capitalize(), i] for i, o in enumerate(s.options)]
         return {"label": s.label, "type": "dropdown", "options": options, "content": content}
     if s.type == "accel":
-        return {"label": s.label, "type": "range", "options": [0, ACCEL_VIA_MAX], "content": content}
+        # Slider limits are the accepted min/max on the module's 0..60000 scale.
+        options = [int.from_bytes(s.encode(s.min), "big"), int.from_bytes(s.encode(s.max), "big")]
+        return {"label": s.label, "type": "range", "options": options, "content": content}
     return {"label": s.label, "type": "range", "options": [int(s.min), int(s.max)], "content": content}
 
 

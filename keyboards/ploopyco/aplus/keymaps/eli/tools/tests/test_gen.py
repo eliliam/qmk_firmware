@@ -61,7 +61,9 @@ def test_via_definition(cat, info):
     assert mode["options"] == [["Middle click", 0], ["Drag scroll", 1]]
     accel = {c["content"][0]: c for c in sections["Acceleration"]}
     assert accel["id_accel_takeoff"]["content"] == ["id_accel_takeoff", 24, 1]
-    assert accel["id_accel_takeoff"]["options"] == [0, 60000]
+    # The slider must not reach below the takeoff floor (0.5 of 0..5).
+    assert accel["id_accel_takeoff"]["options"] == [6000, 60000]
+    assert accel["id_accel_offset"]["options"] == [0, 60000]
     assert accel["id_accel_enabled"]["type"] == "toggle"
 
 
@@ -76,3 +78,7 @@ def test_check_detects_stale(tmp_path, cat):
 
 def test_committed_outputs_are_current():
     assert gen.main(["--check"]) == 0
+
+
+def test_header_has_accel_takeoff_floor(cat):
+    assert "#define ELI_ACCEL_TAKEOFF_MIN_RAW 6000" in gen.render_header(cat)

@@ -167,3 +167,39 @@ def test_firmware_truncation_is_not_drift(fake, config_path, cat, codec):
     fake.values[(24, 2)] = (2885).to_bytes(2, "big")
     assert diff(read_state(mouse, cat, codec), target, cat) == []
     assert write_state(mouse, target, read_state(mouse, cat, codec), cat, codec) == 0
+
+
+def test_growth_rate_033_is_not_drift_after_truncation(fake, config_path, cat, codec):
+    # Review finding: 0.33 encodes to 3848, the firmware reads back 3847.
+    mouse = Mouse(fake)
+    config_path.write_text(CONFIG.replace("growth_rate = 0.25", "growth_rate = 0.33"))
+    target = load_config(config_path, cat, codec)
+    write_state(mouse, target, read_state(mouse, cat, codec), cat, codec)
+    fake.values[(24, 2)] = (3847).to_bytes(2, "big")
+    pulled = read_state(mouse, cat, codec)
+    assert diff(pulled, target, cat) == []
+    fake.values[(24, 2)] = (int.from_bytes(cat.setting("accel.growth_rate").encode(pulled.settings["accel.growth_rate"]), "big") - 1).to_bytes(2, "big")
+    assert diff(read_state(mouse, cat, codec), pulled, cat) == []
+
+
+@pytest.mark.parametrize(
+    "text,path",
+    [
+        (CONFIG.replace("dpi = 900", "dpi = 900\ndpi = 900"), "dpi"),
+        (CONFIG.replace("[layers.1]\nBL = \"QK_BOOT\"", "[layers]\n1 = \"KC_A\""), "layers.1"),
+        ("layers = []\n" + CONFIG.split("[layers.0]")[0], "layers"),
+        ("settings = 3\n", "settings"),
+        (CONFIG.replace("[settings.led]", "[settings.led\n"), "mouse.toml"),
+    ],
+)
+def test_malformed_config_raises_config_error(config_path, cat, codec, text, path):
+    config_path.write_text(text)
+    with pytest.raises(ConfigError, match=path):
+        load_config(config_path, cat, codec)
+
+
+def test_save_config_on_broken_file_raises_config_error(config_path, cat, codec):
+    state = load_config(config_path, cat, codec)
+    config_path.write_text("[settings.led\n")
+    with pytest.raises(ConfigError, match="mouse.toml"):
+        save_config(config_path, state, cat)

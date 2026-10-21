@@ -232,3 +232,7 @@ Where the build differs from the text above, the code and `AGENTS.md` win:
 - Accel drift allows ±1 slider step, because the module truncates.
 - `via_init_kb()` resets the dynamic keymap when the settings store is
   missing (first flash, or a size change).
+- Ploopy's DPI bounds bug (`ploopyco.c:234`) is left as it is, and DPI no
+  longer depends on it (`settings_apply()` sets the CPI). If that check ever
+  fires on corrupt EEPROM, it calls `eeconfig_init_user()`, which resets every
+  runtime setting; the plug-in hook then restores them.

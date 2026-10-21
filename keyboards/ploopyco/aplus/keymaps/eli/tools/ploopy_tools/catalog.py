@@ -76,7 +76,7 @@ class Setting:
         if self.type == "enum":
             return self.options[raw] if raw < len(self.options) else raw
         if self.type == "accel":
-            return round(self.via_min + raw * (self.via_max - self.via_min) / ACCEL_VIA_MAX, 4)
+            return round(self.via_min + raw * (self.via_max - self.via_min) / ACCEL_VIA_MAX, 6)
         return self._shown(raw)
 
     def _shown(self, raw: float) -> int | float:

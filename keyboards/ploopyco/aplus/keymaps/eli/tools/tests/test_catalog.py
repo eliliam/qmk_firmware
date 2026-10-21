@@ -59,7 +59,7 @@ def test_accel_roundtrip_within_one_step(cat, value):
             continue
         back = s.decode(s.encode(value))
         assert abs(back - value) <= (s.via_max - s.via_min) / 60000
-        assert back == round(back, 4)
+        assert back == round(back, 6)
 
 
 def test_ids_unique_per_channel(cat):
@@ -80,3 +80,14 @@ def test_unknown_setting_raises_keyerror(cat):
 def test_dpi_accepts_values_vias_slider_sets(cat):
     # VIA's range slider has no step; the PMW3360 driver rounds down to 100.
     cat.setting("pointer.dpi").validate(1180)
+
+
+def test_accel_raw_roundtrip_exact(cat):
+    # Decoded values must re-encode to the same slider value, or drift checks
+    # stack decode rounding on top of the module's truncation.
+    for s in cat.settings:
+        if s.type == "accel":
+            for raw in range(0, 60001):
+                value = s.decode(raw.to_bytes(2, "big"))
+                if s.min <= value <= s.max:
+                    assert int.from_bytes(s.encode(value), "big") == raw, (s.name, raw)

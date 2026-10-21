@@ -234,7 +234,7 @@
               "label": "Takeoff",
               "type": "range",
               "options": [
-                0,
+                6000,
                 60000
               ],
               "content": [

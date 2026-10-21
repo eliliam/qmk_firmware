@@ -92,6 +92,10 @@ void settings_init(void) {
        written bytes give NaN or nonsense, so fall back to its defaults. */
     if (!accel_valid()) {
         eeconfig_init_pointing_device();
+        /* The configured curve is gone: invalidate the apply marker so the
+           plug-in hook restores it. */
+        memset(eli_settings.marker, 0, sizeof(eli_settings.marker));
+        settings_save();
     }
 
     settings_apply();
@@ -179,6 +183,12 @@ void via_custom_value_command_kb(uint8_t *data, uint8_t length) {
     uint8_t  channel_id = data[1];
 
     if (channel_id == ACCEL_CHANNEL) {
+        /* The module's setter skips its own takeoff floor, and accel_valid()
+           would reset a lower value at the next boot. */
+        if (*command_id == id_custom_set_value && data[2] == 1 && ((data[3] << 8) | data[4]) < ELI_ACCEL_TAKEOFF_MIN_RAW) {
+            data[3] = ELI_ACCEL_TAKEOFF_MIN_RAW >> 8;
+            data[4] = ELI_ACCEL_TAKEOFF_MIN_RAW & 0xFF;
+        }
         via_custom_value_command_accel(data, length);
         return;
     }

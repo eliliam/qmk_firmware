@@ -8,6 +8,9 @@
 #define ELI_SETTINGS_STORE_OFFSET 20
 #define ELI_SETTINGS_MARKER_ID 254
 #define ELI_SETTINGS_MAGIC 0xE1
+/* Lowest accel takeoff (channel 24, id 1) on the module's 0..60000 slider
+   scale; the module's own VIA setter does not enforce it. */
+#define ELI_ACCEL_TAKEOFF_MIN_RAW 6000
 
 _Static_assert(VIA_EEPROM_CUSTOM_CONFIG_SIZE == 128, "VIA_EEPROM_CUSTOM_CONFIG_SIZE must match settings.toml");
 

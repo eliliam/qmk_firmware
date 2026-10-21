@@ -55,6 +55,14 @@ class App:
         self.cat = load_catalog()
         self.codec = Codec.load(self.cat)
 
+    def redraw(self, state: MouseState) -> None:
+        """Render the cheat sheet. The mouse and config are already written
+        by now, so a failure here is only a warning."""
+        try:
+            self.render(state, self.cat, self.config_path)
+        except (ConfigError, OSError) as e:
+            print(f"ploopy: warning: cheat sheet not updated: {e}", file=sys.stderr)
+
     def mouse(self) -> Mouse:
         return Mouse(self.transport_factory())
 
@@ -73,7 +81,7 @@ class App:
         mouse = mouse or self.mouse()
         writes = write_state(mouse, config, read_state(mouse, self.cat, self.codec), self.cat, self.codec)
         mouse.set_marker()
-        self.render(config, self.cat, self.config_path)
+        self.redraw(config)
         return writes
 
     def cmd_apply(self, args) -> int:
@@ -82,8 +90,13 @@ class App:
 
     def cmd_pull(self, args) -> int:
         state = read_state(self.mouse(), self.cat, self.codec)
+        for s in self.cat.settings:
+            try:
+                s.validate(state.settings[s.name])
+            except ValueError as e:
+                raise ConfigError(f"not pulled: the mouse holds an invalid value: {e}") from None
         save_config(self.config_path, state, self.cat)
-        self.render(state, self.cat, self.config_path)
+        self.redraw(state)
         print(f"pulled into {self.config_path}")
         return 0
 
@@ -111,7 +124,7 @@ class App:
         mouse.save(s.channel)
         config.settings[s.name] = value
         save_config(self.config_path, config, self.cat)
-        self.render(config, self.cat, self.config_path)
+        self.redraw(config)
         return 0
 
     def cmd_on_plug(self, args) -> int:

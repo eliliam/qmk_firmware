@@ -186,3 +186,35 @@ def test_on_plug_waits_for_device(ploopy, fake, calls):
 
     assert ploopy("on-plug", factory=flaky) == 0
     assert len(attempts) == 3
+
+
+def test_pull_on_broken_config_is_one_line_error(ploopy, config_path, capsys):
+    config_path.write_text("[settings.led\n")
+    assert ploopy("pull") == 2
+    err = capsys.readouterr().err
+    assert "Traceback" not in err and "mouse.toml" in err
+
+
+def test_pull_refuses_values_the_config_would_reject(ploopy, fake, config_path, capsys):
+    before = config_path.read_text()
+    fake.values[(24, 1)] = (3000).to_bytes(2, "big")  # takeoff 0.25, below the 0.5 floor
+    assert ploopy("pull") == 2
+    assert "accel.takeoff" in capsys.readouterr().err
+    assert config_path.read_text() == before
+
+
+def test_render_failure_after_apply_is_a_warning(fake, config_path, calls, capsys):
+    from ploopy_tools.mouseconfig import ConfigError
+
+    def broken(*args):
+        raise ConfigError("cheat sheet template x: boom")
+
+    def invoke(*argv):
+        return cli.main(["--config", str(config_path), *argv], transport_factory=lambda: fake, run=calls.run, render=broken, sleep=lambda s: None)
+
+    assert invoke("apply") == 0
+    assert "warning" in capsys.readouterr().err
+    fake.marker = False
+    assert invoke("on-plug") == 0
+    assert ["notify-send", "Ploopy", "Restored mouse config after reset"] in calls.commands
+    assert not any(c[:3] == ["notify-send", "-u", "critical"] for c in calls.commands)

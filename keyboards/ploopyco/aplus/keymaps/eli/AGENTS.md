@@ -85,8 +85,9 @@ on the flashed mouse.
 
 These were all verified on the hardware:
 
-- **A reflash built on a different UTC day resets the button map** to
-  `keymap.c`, because VIA's EEPROM magic is the build date. Settings
+- **A reflash built on a different day resets the button map** to
+  `keymap.c`, because VIA's EEPROM magic is the build date. The date is the
+  build host's local date, and the Docker build runs in UTC. Settings
   survive. The plug-in hook restores the button map: the apply marker
   (value id 254 on channel 42) stops matching the build stamp. A same-day
   reflash changes nothing. Test a reset with `-e SKIP_VERSION=yes` (build
@@ -107,7 +108,12 @@ These were all verified on the hardware:
   and reports usage page 0. In hidraw, `read(n, 0)` means "no timeout": it
   blocks.
 - **Accel values read back one slider step low**, because the module
-  truncates when it projects. `diff` allows ±1 step.
+  truncates when it projects. `diff` allows ±1 step, and the CLI decodes
+  accel values to 6 decimals so that a decoded value re-encodes exactly.
+  The module's VIA setter skips the takeoff ≥ 0.5 floor, so
+  `via_custom_value_command_kb()` clamps it. If the accel floats are invalid
+  at boot, they reset to defaults and the apply marker is cleared, so the
+  hook restores them.
 - **The board's `DPI Config` keycode (`QK_KB_0`) bypasses `pointer.dpi`.**
   Use `PKC_BLINKY_DPI_CONFIG`. `QK_KB_0` and `QK_KB_1` stay in `via.json`
   only as index placeholders.

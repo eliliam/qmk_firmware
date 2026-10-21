@@ -44,19 +44,25 @@ def read_state(mouse: Mouse, cat: Catalog, codec: Codec) -> MouseState:
     return MouseState(settings, layers)
 
 
+def _parse(path: Path) -> tomlkit.TOMLDocument:
+    try:
+        return tomlkit.parse(Path(path).read_text())
+    except FileNotFoundError:
+        raise ConfigError(f"{path}: mouse config not found") from None
+    except tomlkit.exceptions.TOMLKitError as e:
+        raise ConfigError(f"{path}: {e}") from None
+
+
 def load_config(path: Path, cat: Catalog, codec: Codec) -> MouseState:
     """Parse and fully validate the mouse config. Raises ConfigError naming
     the TOML path of the first problem."""
-    try:
-        doc = tomlkit.parse(Path(path).read_text()).unwrap()
-    except FileNotFoundError:
-        raise ConfigError(f"{path}: mouse config not found") from None
-    except tomlkit.exceptions.ParseError as e:
-        raise ConfigError(f"{path}: {e}") from None
+    doc = _parse(path).unwrap()
 
-    for key in doc:
+    for key, value in doc.items():
         if key not in ("settings", "layers"):
             raise ConfigError(f"{key}: unknown section")
+        if not isinstance(value, dict):
+            raise ConfigError(f"{key}: expected a table ([{key}.NAME] sections)")
 
     settings: dict[str, Value] = {}
     known = {s.name for s in cat.settings}
@@ -80,6 +86,8 @@ def load_config(path: Path, cat: Catalog, codec: Codec) -> MouseState:
     for layer_key, table in doc.get("layers", {}).items():
         if not layer_key.isdigit() or int(layer_key) >= LAYERS:
             raise ConfigError(f"layers.{layer_key}: layers are 0..{LAYERS - 1}")
+        if not isinstance(table, dict):
+            raise ConfigError(f"layers.{layer_key}: expected a table ([layers.{layer_key}])")
         for pos, name in table.items():
             path_ = f"layers.{layer_key}.{pos}"
             if pos not in POSITIONS:
@@ -148,7 +156,7 @@ def save_config(path: Path, state: MouseState, cat: Catalog) -> None:
     """Update the mouse config in place, keeping comments and layout. Opens
     the file for writing (no rename), so a stow symlink stays a symlink."""
     path = Path(path)
-    doc = tomlkit.parse(path.read_text()) if path.exists() else tomlkit.document()
+    doc = _parse(path) if path.exists() else tomlkit.document()
 
     settings = doc.setdefault("settings", tomlkit.table(is_super_table=True))
     for s in cat.settings:
