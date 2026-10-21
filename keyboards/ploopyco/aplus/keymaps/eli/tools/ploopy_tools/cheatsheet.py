@@ -21,9 +21,15 @@ OUTPUT_NAME = "cheatsheet.html"
 
 def _context(state: MouseState, labels: dict) -> dict:
     def key(layer: int, pos: str) -> dict:
+        # "NAME@LAYER" in the labels table overrides "NAME" on that layer.
         name = state.layers[layer][pos]
-        entry = labels.get(name, {})
-        return {"name": name, "label": entry.get("label", name), "detail": entry.get("detail", "")}
+        entry = labels.get(f"{name}@{layer}", labels.get(name, {}))
+        return {
+            "name": name,
+            "label": entry.get("label", name),
+            "detail": entry.get("detail", ""),
+            "accent": entry.get("accent"),
+        }
 
     layers = [
         {"index": n, "buttons": {pos: key(n, pos) for pos in keys}}

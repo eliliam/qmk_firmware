@@ -110,3 +110,19 @@ def test_beside_config_missing_files_warns(cat, tmp_path, capsys):
 def test_beside_config_writes_output(cat, files):
     render_beside_config(state(cat, BL="MS_BTN1"), cat, files / "mouse.toml")
     assert keymap_json((files / "cheatsheet.html").read_text())["panels"][0]["title"] == "Layer 0"
+
+
+def test_layer_specific_label_and_accent(cat, files):
+    (files / "labels.toml").write_text(
+        LABELS + '\n["TG(1)"]\nlabel = "Control Layer"\naccent = "#e0252b"\n\n["TG(1)@1"]\nlabel = "Base Layer"\n'
+    )
+    (files / "cheatsheet.json.j2").write_text(
+        '{"a": {{ key(0, "RW") | tojson }}, "b": {{ key(1, "RW") | tojson }}}'
+    )
+    st = state(cat, RW="TG(1)")
+    st.layers[1]["RW"] = "TG(1)"
+    out = files / "cheatsheet.html"
+    render_cheatsheet(st, cat, files / "cheatsheet.json.j2", files / "labels.toml", out)
+    data = keymap_json(out.read_text())
+    assert data["a"] == {"name": "TG(1)", "label": "Control Layer", "detail": "", "accent": "#e0252b"}
+    assert data["b"] == {"name": "TG(1)", "label": "Base Layer", "detail": "", "accent": None}

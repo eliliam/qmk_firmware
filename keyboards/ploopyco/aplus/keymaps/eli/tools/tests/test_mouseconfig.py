@@ -156,3 +156,14 @@ def test_save_config_keeps_comments(config_path, cat, codec):
     assert "flick_threshold = 240 # counts per step" in text
     assert "[layers.1]" not in text
     assert load_config(config_path, cat, codec).settings["niri.flick_threshold"] == 240
+
+
+def test_firmware_truncation_is_not_drift(fake, config_path, cat, codec):
+    # The accel module truncates float -> 0..60000, so 0.25 reads back as raw
+    # 2885 while 0.25 encodes to 2886.
+    mouse = Mouse(fake)
+    target = load_config(config_path, cat, codec)
+    write_state(mouse, target, read_state(mouse, cat, codec), cat, codec)
+    fake.values[(24, 2)] = (2885).to_bytes(2, "big")
+    assert diff(read_state(mouse, cat, codec), target, cat) == []
+    assert write_state(mouse, target, read_state(mouse, cat, codec), cat, codec) == 0

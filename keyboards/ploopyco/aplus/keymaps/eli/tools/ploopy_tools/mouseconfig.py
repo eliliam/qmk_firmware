@@ -96,9 +96,12 @@ def load_config(path: Path, cat: Catalog, codec: Codec) -> MouseState:
 def _same(cat: Catalog, name: str, a: Value, b: Value) -> bool:
     s = cat.setting(name)
     try:
-        return s.encode(a) == s.encode(b)
+        ra, rb = int.from_bytes(s.encode(a), "big"), int.from_bytes(s.encode(b), "big")
     except ValueError:
         return a == b
+    # The accel module truncates its floats onto the 0..60000 slider, so a
+    # value can read back one step below what it encodes to.
+    return abs(ra - rb) <= 1 if s.type == "accel" else ra == rb
 
 
 def _show(value: Value) -> str:
