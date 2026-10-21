@@ -1,0 +1,207 @@
+# Setting catalog for Eli's A+ keymap: the one list of runtime settings and
+# custom keycodes. After editing, regenerate settings_catalog.h and via.json:
+#
+#   uv run --project tools python -m ploopy_tools.gen
+#
+# Rules:
+# - A setting's `id` is its VIA value id on its channel. Ids are stable:
+#   never reuse or renumber one, and give a new setting the next free id.
+#   Channel 42 settings are stored in id order, so new ones are appended.
+# - `default` is the firmware default. `scale` turns the stored integer into
+#   the value shown in the mouse config (stored 80 * 0.01 = 0.8).
+# - Custom keycodes take values from QK_KB_2 (0x7E02) onward, in list order.
+#   Adding one at the end is safe; reordering changes stored button maps.
+
+channel = 42
+store_offset = 20        # the accel module uses custom config bytes 0-19
+custom_config_size = 128 # never change: it moves the dynamic keymap
+
+[[keycode]]
+name = "PKC_TGL_VERT_SCRL"
+label = "Toggle vertical scroll arrows"
+
+[[keycode]]
+name = "PKC_TGL_HORIZ_SCRL"
+label = "Toggle horizontal scroll arrows"
+
+[[keycode]]
+name = "PKC_NIRI"
+label = "Niri navigation (hold)"
+
+[[keycode]]
+name = "PKC_ADJUST_LED_BRIGHTNESS"
+label = "Cycle LED brightness"
+
+[[keycode]]
+name = "PKC_BLINKY_DPI_CONFIG"
+label = "Cycle DPI presets"
+
+[[keycode]]
+name = "PKC_TGL_BOTTOM_RIGHT"
+label = "Toggle Bottom Right mode"
+
+[[keycode]]
+name = "PKC_BOTTOM_RIGHT"
+label = "Bottom Right (middle click or drag scroll)"
+
+[[setting]]
+name = "niri.flick_threshold"
+id = 1
+type = "u16"
+min = 20
+max = 2000
+default = 200
+label = "Flick threshold (counts per step)"
+group = "Niri navigation"
+
+[[setting]]
+name = "niri.tap_term"
+id = 2
+type = "u16"
+min = 50
+max = 1000
+default = 250
+label = "Overview tap time (ms)"
+group = "Niri navigation"
+
+[[setting]]
+name = "niri.idle_reset"
+id = 3
+type = "u16"
+min = 50
+max = 2000
+default = 200
+label = "Idle reset (ms)"
+group = "Niri navigation"
+
+[[setting]]
+name = "drag_scroll.divisor_h"
+id = 4
+type = "u16"
+min = 5
+max = 1000
+default = 80
+scale = 0.01
+label = "Horizontal divisor x100 (lower = faster)"
+group = "Drag scroll"
+
+[[setting]]
+name = "drag_scroll.divisor_v"
+id = 5
+type = "u16"
+min = 5
+max = 1000
+default = 24
+scale = 0.01
+label = "Vertical divisor x100 (lower = faster)"
+group = "Drag scroll"
+
+[[setting]]
+name = "wheels.vertical_arrows"
+id = 6
+type = "bool"
+default = false
+label = "Left wheel sends Up/Down arrows"
+group = "Wheels"
+
+[[setting]]
+name = "wheels.horizontal_arrows"
+id = 7
+type = "bool"
+default = false
+label = "Right wheel sends Left/Right arrows"
+group = "Wheels"
+
+[[setting]]
+name = "bottom_right.mode"
+id = 8
+type = "enum"
+options = ["middle_click", "drag_scroll"]
+default = "middle_click"
+label = "Bottom Right"
+group = "Buttons"
+
+[[setting]]
+name = "led.brightness"
+id = 9
+type = "u8"
+min = 1
+max = 4
+default = 4
+label = "LED brightness"
+group = "Lighting"
+
+[[setting]]
+name = "pointer.dpi"
+id = 10
+type = "u16"
+min = 100
+max = 12000
+step = 100
+default = 900
+label = "DPI"
+group = "Pointer"
+
+# The accel module's own VIA channel. via_min/via_max are the module's
+# projection range for its 0-60000 slider; min/max are what we accept.
+
+[[setting]]
+name = "accel.enabled"
+channel = 24
+id = 5
+type = "bool"
+default = true
+label = "Enabled"
+group = "Acceleration"
+
+[[setting]]
+name = "accel.takeoff"
+channel = 24
+id = 1
+type = "accel"
+min = 0.5
+max = 5
+via_min = 0
+via_max = 5
+default = 2.0
+label = "Takeoff"
+group = "Acceleration"
+
+[[setting]]
+name = "accel.growth_rate"
+channel = 24
+id = 2
+type = "accel"
+min = 0.01
+max = 5
+via_min = 0.01
+via_max = 5
+default = 0.25
+label = "Growth rate"
+group = "Acceleration"
+
+[[setting]]
+name = "accel.offset"
+channel = 24
+id = 3
+type = "accel"
+min = 0
+max = 15
+via_min = 0
+via_max = 15
+default = 2.2
+label = "Offset"
+group = "Acceleration"
+
+[[setting]]
+name = "accel.limit"
+channel = 24
+id = 4
+type = "accel"
+min = 0
+max = 1
+via_min = 0
+via_max = 1
+default = 0.2
+label = "Limit"
+group = "Acceleration"

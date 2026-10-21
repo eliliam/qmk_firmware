@@ -1,0 +1,344 @@
+{
+  "name": "Ploopy A+ (eli)",
+  "vendorId": "0x5043",
+  "productId": "0x81DB",
+  "matrix": {
+    "rows": 1,
+    "cols": 8
+  },
+  "keycodes": [
+    "qmk_lighting"
+  ],
+  "customKeycodes": [
+    {
+      "name": "DPI Config",
+      "title": "Cycle DPI (board)",
+      "shortName": "DPI"
+    },
+    {
+      "name": "Drag Scroll",
+      "title": "Drag scroll (board)",
+      "shortName": "Drag"
+    },
+    {
+      "name": "Toggle vertical scroll arrows",
+      "title": "PKC_TGL_VERT_SCRL",
+      "shortName": "TGL_VE"
+    },
+    {
+      "name": "Toggle horizontal scroll arrows",
+      "title": "PKC_TGL_HORIZ_SCRL",
+      "shortName": "TGL_HO"
+    },
+    {
+      "name": "Niri navigation (hold)",
+      "title": "PKC_NIRI",
+      "shortName": "NIRI"
+    },
+    {
+      "name": "Cycle LED brightness",
+      "title": "PKC_ADJUST_LED_BRIGHTNESS",
+      "shortName": "ADJUST"
+    },
+    {
+      "name": "Cycle DPI presets",
+      "title": "PKC_BLINKY_DPI_CONFIG",
+      "shortName": "BLINKY"
+    },
+    {
+      "name": "Toggle Bottom Right mode",
+      "title": "PKC_TGL_BOTTOM_RIGHT",
+      "shortName": "TGL_BO"
+    },
+    {
+      "name": "Bottom Right (middle click or drag scroll)",
+      "title": "PKC_BOTTOM_RIGHT",
+      "shortName": "BOTTOM"
+    }
+  ],
+  "menus": [
+    {
+      "label": "Eli",
+      "content": [
+        {
+          "label": "Niri navigation",
+          "content": [
+            {
+              "label": "Flick threshold (counts per step)",
+              "type": "range",
+              "options": [
+                20,
+                2000
+              ],
+              "content": [
+                "id_niri_flick_threshold",
+                42,
+                1
+              ]
+            },
+            {
+              "label": "Overview tap time (ms)",
+              "type": "range",
+              "options": [
+                50,
+                1000
+              ],
+              "content": [
+                "id_niri_tap_term",
+                42,
+                2
+              ]
+            },
+            {
+              "label": "Idle reset (ms)",
+              "type": "range",
+              "options": [
+                50,
+                2000
+              ],
+              "content": [
+                "id_niri_idle_reset",
+                42,
+                3
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Drag scroll",
+          "content": [
+            {
+              "label": "Horizontal divisor x100 (lower = faster)",
+              "type": "range",
+              "options": [
+                5,
+                1000
+              ],
+              "content": [
+                "id_drag_scroll_divisor_h",
+                42,
+                4
+              ]
+            },
+            {
+              "label": "Vertical divisor x100 (lower = faster)",
+              "type": "range",
+              "options": [
+                5,
+                1000
+              ],
+              "content": [
+                "id_drag_scroll_divisor_v",
+                42,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Wheels",
+          "content": [
+            {
+              "label": "Left wheel sends Up/Down arrows",
+              "type": "toggle",
+              "content": [
+                "id_wheels_vertical_arrows",
+                42,
+                6
+              ]
+            },
+            {
+              "label": "Right wheel sends Left/Right arrows",
+              "type": "toggle",
+              "content": [
+                "id_wheels_horizontal_arrows",
+                42,
+                7
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Buttons",
+          "content": [
+            {
+              "label": "Bottom Right",
+              "type": "dropdown",
+              "options": [
+                [
+                  "Middle click",
+                  0
+                ],
+                [
+                  "Drag scroll",
+                  1
+                ]
+              ],
+              "content": [
+                "id_bottom_right_mode",
+                42,
+                8
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Lighting",
+          "content": [
+            {
+              "label": "LED brightness",
+              "type": "range",
+              "options": [
+                1,
+                4
+              ],
+              "content": [
+                "id_led_brightness",
+                42,
+                9
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Pointer",
+          "content": [
+            {
+              "label": "DPI",
+              "type": "range",
+              "options": [
+                100,
+                12000
+              ],
+              "content": [
+                "id_pointer_dpi",
+                42,
+                10
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Acceleration",
+          "content": [
+            {
+              "label": "Enabled",
+              "type": "toggle",
+              "content": [
+                "id_accel_enabled",
+                24,
+                5
+              ]
+            },
+            {
+              "label": "Takeoff",
+              "type": "range",
+              "options": [
+                0,
+                60000
+              ],
+              "content": [
+                "id_accel_takeoff",
+                24,
+                1
+              ]
+            },
+            {
+              "label": "Growth rate",
+              "type": "range",
+              "options": [
+                0,
+                60000
+              ],
+              "content": [
+                "id_accel_growth_rate",
+                24,
+                2
+              ]
+            },
+            {
+              "label": "Offset",
+              "type": "range",
+              "options": [
+                0,
+                60000
+              ],
+              "content": [
+                "id_accel_offset",
+                24,
+                3
+              ]
+            },
+            {
+              "label": "Limit",
+              "type": "range",
+              "options": [
+                0,
+                60000
+              ],
+              "content": [
+                "id_accel_limit",
+                24,
+                4
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "layouts": {
+    "keymap": [
+      [
+        {
+          "h": 2
+        },
+        "0,1",
+        {
+          "x": 0.25,
+          "h": 1.25
+        },
+        "0,2",
+        {
+          "x": 0.25,
+          "h": 1.25
+        },
+        "0,3",
+        {
+          "x": 0.25,
+          "h": 2
+        },
+        "0,4"
+      ],
+      [
+        {
+          "y": 1.25,
+          "w": 1.75,
+          "h": 2
+        },
+        "0,0",
+        {
+          "x": 1.25,
+          "w": 1.75,
+          "h": 2
+        },
+        "0,5"
+      ],
+      [
+        {
+          "y": 1.25,
+          "x": 0.5,
+          "w": 1.75,
+          "h": 1.5
+        },
+        "0,6",
+        {
+          "x": 0.25,
+          "w": 1.75,
+          "h": 1.5
+        },
+        "0,7"
+      ]
+    ]
+  }
+}
