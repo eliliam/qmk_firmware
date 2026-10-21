@@ -23,8 +23,9 @@
      (see "Niri navigation" below). The gestures module is not used.
    - Right-handed only: the mirror layer and drag scroll are removed.
    - Left wheel clockwise scrolls up (stock scrolls down).
-   - Control layer: Bottom Left enters the bootloader, Bottom Right flips the
-     vertical wheel direction.
+   - Bottom Right is middle click or hold-to-drag-scroll. Control layer Bottom
+     Right switches between them; Control layer Bottom Left enters the
+     bootloader.
    keymap.html is a visual reference of this keymap; update its KEYMAP data
    block whenever the mapping changes. */
 
@@ -79,7 +80,8 @@ typedef union {
     bool    vertical_scroll_arrows :1;
     bool    unused_drag_scroll_mode :1;
     uint8_t led_brightness: 8;
-    bool    vertical_scroll_inverted :1;
+    bool    unused_vertical_scroll_inverted :1;
+    bool    bottom_right_drag_scroll :1;
   };
 } user_config_t;
 
@@ -96,7 +98,8 @@ enum my_keycodes {
   PKC_UNUSED_DRAG_SCROLL,
   PKC_ADJUST_LED_BRIGHTNESS,
   PKC_BLINKY_DPI_CONFIG,
-  PKC_TGL_VERT_SCRL_DIR
+  PKC_TGL_BOTTOM_RIGHT,
+  PKC_BOTTOM_RIGHT
 };
 
 /* Layer names. */
@@ -109,11 +112,11 @@ enum {
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     // Base layer with all of the mouse-related stuff for everyday use.
     [LAYER_NAV] = LAYOUT(               MS_BTN4, MS_BTN5, MEH(KC_SPC), MS_BTN2,
-                                        MS_BTN1, MS_BTN3,
+                                        MS_BTN1, PKC_BOTTOM_RIGHT,
                                         PKC_NIRI, TG(LAYER_CONTROL) ),
     // Layer for all of the customization options.
     [LAYER_CONTROL] = LAYOUT(           PKC_BLINKY_DPI_CONFIG, PKC_ADJUST_LED_BRIGHTNESS, PKC_TGL_VERT_SCRL, PKC_TGL_HORIZ_SCRL,
-                                        QK_BOOT, PKC_TGL_VERT_SCRL_DIR,
+                                        QK_BOOT, PKC_TGL_BOTTOM_RIGHT,
                                         TG(LAYER_CONTROL), TG(LAYER_CONTROL) ),
     [2] = LAYOUT( _______, _______, _______, _______, _______, _______, _______, _______ ),
     [3] = LAYOUT( _______, _______, _______, _______, _______, _______, _______, _______ ),
@@ -245,7 +248,7 @@ void eeconfig_init_user(void) {
     user_config.horizontal_scroll_arrows = false;   // False = Scroll events, True = left/right arrows.
     user_config.vertical_scroll_arrows = false;     // False = Scroll events, True = up/down arrows.
     user_config.led_brightness = 4;                 // Brightest mode by default.
-    user_config.vertical_scroll_inverted = false;   // False = clockwise scrolls up.
+    user_config.bottom_right_drag_scroll = false;   // False = middle click, True = hold to drag scroll.
 
     eeconfig_update_user(user_config.raw);
 }
@@ -312,6 +315,8 @@ void keyboard_post_init_user(void) {
     rgblight_sethsv(0, 0, RGBLIGHT_VAL_STEP * user_config.led_brightness);
 }
 
+static bool bottom_right_dragging = false;
+
 bool process_record_user(uint16_t keycode, keyrecord_t* record) {
     /* Any other button pressed during a Niri hold cancels the overview tap. */
     if (niri_hold && keycode != PKC_NIRI && record->event.pressed) {
@@ -349,21 +354,37 @@ bool process_record_user(uint16_t keycode, keyrecord_t* record) {
                 }
             }
             return true;
-        case PKC_TGL_VERT_SCRL_DIR:
+        case PKC_TGL_BOTTOM_RIGHT:
             if (record->event.pressed) {
-                user_config.vertical_scroll_inverted ^= 1;
+                user_config.bottom_right_drag_scroll ^= 1;
                 eeconfig_update_user(user_config.raw);
 
-                if( user_config.vertical_scroll_inverted ) {
+                if( user_config.bottom_right_drag_scroll ) {
                     rgblight_blink_layer(OPTION_CHANGED_LAYER_COLOUR, OPTION_CHANGE_BLINK_TIMEOUT*2);
-                    dprintf("Vert. scroll direction = clockwise down.\n");
+                    dprintf("Bottom right = drag scroll.\n");
                 }
                 else {
                     rgblight_blink_layer_repeat(OPTION_CHANGED_LAYER_COLOUR, OPTION_CHANGE_BLINK_TIMEOUT, 2);
-                    dprintf("Vert. scroll direction = clockwise up.\n");
+                    dprintf("Bottom right = middle click.\n");
                 }
             }
             return true;
+        case PKC_BOTTOM_RIGHT:
+            /* Remember the mode at press time, so the release always undoes
+               what the press did. */
+            if (record->event.pressed) {
+                bottom_right_dragging = user_config.bottom_right_drag_scroll;
+            }
+            if (bottom_right_dragging) {
+                is_drag_scroll = record->event.pressed;
+            }
+            else if (record->event.pressed) {
+                register_code(MS_BTN3);
+            }
+            else {
+                unregister_code(MS_BTN3);
+            }
+            return false;
         case PKC_NIRI:
             if (record->event.pressed) {
                 niri_press();
@@ -511,10 +532,8 @@ report_mouse_t pointing_device_task_user(report_mouse_t mouse_report) {
         }
 
         /* The left wheel scrolls vertically. Stock turns clockwise into scrolling
-           down; flip it so clockwise scrolls up, unless the user flipped it back. */
-        if( !user_config.vertical_scroll_inverted ) {
-            leftwheel_delta = -leftwheel_delta;
-        }
+           down; flip it so clockwise scrolls up. */
+        leftwheel_delta = -leftwheel_delta;
 
         /* If scroll arrow mode is activated for horizontal scrolling, then we do that.
            This behaviour is the same across OSes. */

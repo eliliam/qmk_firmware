@@ -24,3 +24,10 @@
 #define NIRI_FLICK_THRESHOLD 200 // raw counts per step (acceleration is bypassed while held)
 #define NIRI_TAP_TERM 250        // a shorter press with no step toggles the overview
 #define NIRI_IDLE_RESET_MS 200   // drop partial motion after this long without movement
+
+/* Eli: drag scroll (Bottom Right in drag mode) about 25% faster than stock
+   (stock H 1.0, V 0.3; lower = faster). */
+#undef PLOOPY_DRAGSCROLL_DIVISOR_H
+#define PLOOPY_DRAGSCROLL_DIVISOR_H 0.8
+#undef PLOOPY_DRAGSCROLL_DIVISOR_V
+#define PLOOPY_DRAGSCROLL_DIVISOR_V 0.24
