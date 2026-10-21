@@ -41,7 +41,6 @@ def test_bool(cat):
     "name,value",
     [
         ("pointer.dpi", 50),
-        ("pointer.dpi", 150),
         ("accel.takeoff", 0.4),
         ("bottom_right.mode", "sideways"),
         ("pointer.dpi", True),
@@ -76,3 +75,8 @@ def test_store_fits(cat):
 def test_unknown_setting_raises_keyerror(cat):
     with pytest.raises(KeyError):
         cat.setting("nope.nope")
+
+
+def test_dpi_accepts_values_vias_slider_sets(cat):
+    # VIA's range slider has no step; the PMW3360 driver rounds down to 100.
+    cat.setting("pointer.dpi").validate(1180)

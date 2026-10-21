@@ -137,9 +137,8 @@ id = 10
 type = "u16"
 min = 100
 max = 12000
-step = 100
 default = 900
-label = "DPI"
+label = "DPI (the sensor rounds down to a multiple of 100)"
 group = "Pointer"
 
 # The accel module's own VIA channel. via_min/via_max are the module's

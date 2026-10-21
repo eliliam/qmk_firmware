@@ -16,6 +16,19 @@ class FakeMouse:
         self.saves: list[int] = []
         self.writes = 0
         self.packets: list[bytes] = []
+        self.pending: list[bytes] = []  # input reports waiting to be read
+        self.noise: list[bytes] = []  # reports another program's commands produce on the next write
+
+    def drain(self) -> None:
+        self.pending.clear()
+
+    def write(self, packet: bytes) -> None:
+        self.pending.extend(self.noise)
+        self.noise = []
+        self.pending.append(self.exchange(packet))
+
+    def read(self) -> bytes | None:
+        return self.pending.pop(0) if self.pending else None
 
     def _setting(self, channel: int, vid: int):
         for s in self.catalog.settings:

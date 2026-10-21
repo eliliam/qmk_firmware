@@ -82,8 +82,54 @@ def test_packets_are_32_bytes(mouse, fake):
 
 def test_echo_mismatch_raises(cat):
     class Garbled:
-        def exchange(self, packet):
-            return bytes([0x42]) + packet[1:]
+        def __init__(self):
+            self.queue = []
 
-    with pytest.raises(MouseError, match="reply"):
+        def drain(self):
+            pass
+
+        def write(self, packet):
+            self.queue.append(bytes([0x42]) + packet[1:])
+
+        def read(self):
+            return self.queue.pop(0) if self.queue else None
+
+    with pytest.raises(MouseError, match="no reply"):
         Mouse(Garbled()).protocol_version()
+
+
+def test_skips_replies_meant_for_another_program(mouse, fake):
+    # hidraw copies every reply to every open handle, so VIA's replies can
+    # arrive before ours while it is connected.
+    fake.noise = [bytes([0x01, 0x00, 0x0D]).ljust(32, b"\x00"), bytes([0x08, 42, 1, 0, 200]).ljust(32, b"\x00")]
+    fake.keymap[0][6] = 0x7E04
+    assert mouse.get_keycode(0, 6) == 0x7E04
+
+
+def test_drains_stale_input_before_sending(mouse, fake):
+    fake.pending.append(bytes([0x04, 0, 0, 6, 0x12, 0x34]).ljust(32, b"\x00"))
+    fake.keymap[0][6] = 0x7E04
+    assert mouse.get_keycode(0, 6) == 0x7E04
+
+
+def test_unhandled_still_detected_through_noise(mouse, fake, cat):
+    from dataclasses import replace
+
+    fake.noise = [bytes([0x02, 0x06]).ljust(32, b"\x00")]
+    with pytest.raises(MouseError, match="unhandled"):
+        mouse.get_setting(replace(cat.setting("niri.flick_threshold"), id=99))
+
+
+def test_no_matching_reply_times_out(cat):
+    class Silent:
+        def drain(self):
+            pass
+
+        def write(self, packet):
+            pass
+
+        def read(self):
+            return None
+
+    with pytest.raises(MouseError, match="no reply"):
+        Mouse(Silent()).protocol_version()

@@ -20,6 +20,19 @@ CMD_CUSTOM_GET = 0x08
 CMD_CUSTOM_SAVE = 0x09
 CMD_LAYER_COUNT = 0x11
 UNHANDLED = 0xFF
+# How many leading request bytes each reply echoes (quantum/via.c). Used to
+# tell our replies apart from replies to another program's commands.
+ECHO_BYTES = {
+    CMD_PROTOCOL_VERSION: 1,
+    CMD_GET_KEYCODE: 4,
+    CMD_SET_KEYCODE: 6,
+    CMD_CUSTOM_SET: 3,
+    CMD_CUSTOM_GET: 3,
+    CMD_CUSTOM_SAVE: 3,
+    CMD_LAYER_COUNT: 1,
+}
+# Replies to skip before giving up on ours.
+MAX_FOREIGN_REPLIES = 16
 
 SETTINGS_CHANNEL = 42
 MARKER_ID = 254
@@ -37,7 +50,15 @@ class NoDeviceError(MouseError):
 
 
 class Transport(Protocol):
-    def exchange(self, packet: bytes) -> bytes: ...
+    """One open raw HID handle. hidraw copies every input report to every
+    open handle, so while VIA is connected `read` can return replies to
+    VIA's commands too."""
+
+    def drain(self) -> None: ...
+
+    def write(self, packet: bytes) -> None: ...
+
+    def read(self) -> bytes | None: ...
 
 
 class HidTransport:
@@ -61,15 +82,28 @@ class HidTransport:
                 return cls(device)
         raise NoDeviceError("Ploopy A+ not found: is it plugged in, and does udev grant hidraw access?")
 
-    def exchange(self, packet: bytes) -> bytes:
+    def drain(self) -> None:
+        # read(n, 0) means "no timeout" (blocks), so drain in non-blocking mode.
+        try:
+            self._device.set_nonblocking(1)
+            while self._device.read(REPORT_SIZE):
+                pass
+            self._device.set_nonblocking(0)
+        except OSError as e:
+            raise MouseError(f"USB transfer failed: {e}") from e
+
+    def write(self, packet: bytes) -> None:
         try:
             self._device.write(b"\x00" + packet)
+        except OSError as e:
+            raise MouseError(f"USB transfer failed: {e}") from e
+
+    def read(self) -> bytes | None:
+        try:
             reply = bytes(self._device.read(REPORT_SIZE, TIMEOUT_MS))
         except OSError as e:
             raise MouseError(f"USB transfer failed: {e}") from e
-        if len(reply) != REPORT_SIZE:
-            raise MouseError("no reply from the mouse (timed out)")
-        return reply
+        return reply if len(reply) == REPORT_SIZE else None
 
 
 class Mouse:
@@ -78,12 +112,19 @@ class Mouse:
 
     def _send(self, *payload: int) -> bytes:
         packet = bytes(payload).ljust(REPORT_SIZE, b"\x00")
-        reply = self._transport.exchange(packet)
-        if reply[0] == UNHANDLED:
-            raise MouseError(f"unhandled: the mouse rejected command {packet[:3].hex(' ')}")
-        if reply[0] != packet[0]:
-            raise MouseError(f"unexpected reply {reply[:3].hex(' ')} to command {packet[:3].hex(' ')}")
-        return reply
+        echo = ECHO_BYTES[packet[0]]
+        self._transport.drain()
+        self._transport.write(packet)
+        for _ in range(MAX_FOREIGN_REPLIES):
+            reply = self._transport.read()
+            if reply is None:
+                break
+            if reply[1:echo] != packet[1:echo] or reply[0] not in (packet[0], UNHANDLED):
+                continue  # a reply to another program's command (e.g. VIA)
+            if reply[0] == UNHANDLED:
+                raise MouseError(f"unhandled: the mouse rejected command {packet[:3].hex(' ')}")
+            return reply
+        raise MouseError(f"no reply from the mouse to command {packet[:3].hex(' ')} (timed out)")
 
     def protocol_version(self) -> int:
         return int.from_bytes(self._send(CMD_PROTOCOL_VERSION)[1:3], "big")

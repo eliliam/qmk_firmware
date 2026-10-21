@@ -32,7 +32,6 @@ class Setting:
     group: str
     options: tuple[str, ...] = ()
     scale: float = 1.0
-    step: int = 1
     via_min: float | None = None
     via_max: float | None = None
 
@@ -65,8 +64,6 @@ class Setting:
             raise ValueError(f"{self.name}: {value} is outside {shown_min}..{shown_max}")
         if self.type != "accel" and abs(value / self.scale - round(value / self.scale)) > 1e-9:
             raise ValueError(f"{self.name}: {value} must be a multiple of {self.scale}")
-        if self.step > 1 and round(value / self.scale) % self.step:
-            raise ValueError(f"{self.name}: {value} must be a multiple of {self.step}")
 
     def encode(self, value: Value) -> bytes:
         self.validate(value)
@@ -142,7 +139,6 @@ def _setting(raw: dict, channel: int) -> Setting:
         group=raw["group"],
         options=options,
         scale=raw.get("scale", 1.0),
-        step=raw.get("step", 1),
         via_min=raw.get("via_min"),
         via_max=raw.get("via_max"),
     )
