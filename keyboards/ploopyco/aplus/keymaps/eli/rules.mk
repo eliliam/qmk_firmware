@@ -1,1 +1,3 @@
 VIA_ENABLE = yes
+POINTING_DEVICE_ACCEL_VIA_ENABLE = yes
+SRC += settings.c

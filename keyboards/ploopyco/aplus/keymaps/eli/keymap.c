@@ -26,8 +26,10 @@
    - Bottom Right is middle click or hold-to-drag-scroll. Control layer Bottom
      Right switches between them; Control layer Bottom Left enters the
      bootloader.
-   keymap.html is a visual reference of this keymap; update its KEYMAP data
-   block whenever the mapping changes. */
+   Every tuning value and toggle is a runtime setting (settings.c), listed in
+   the setting catalog settings.toml. VIA and the `ploopy` CLI change them,
+   and the button map, without a reflash. See AGENTS.md and
+   docs/specs/2026-10-21-runtime-config-design.md. */
 
 #include QMK_KEYBOARD_H
 
@@ -37,6 +39,7 @@
 #include "printf.h"
 
 #include "../../../common/tmag5273wheel.h"
+#include "settings.h"
 
 /* State variables for wheels. */
 uint16_t leftwheel_deadzone_center = 0;
@@ -69,38 +72,8 @@ enum {
     OPTION_CHANGED_LAYER_COLOUR
 };
 
- /* EEPROM memory for the various persistent states that the A+ can have.
-    See eeconfig_init_user() for default values and meanings. The unused bits
-    keep the stock layout, so settings saved by stock firmware still load. */
-typedef union {
-  uint32_t raw;
-  struct {
-    bool    unused_left_handed :1;
-    bool    horizontal_scroll_arrows :1;
-    bool    vertical_scroll_arrows :1;
-    bool    unused_drag_scroll_mode :1;
-    uint8_t led_brightness: 8;
-    bool    unused_vertical_scroll_inverted :1;
-    bool    bottom_right_drag_scroll :1;
-  };
-} user_config_t;
-
-user_config_t user_config;
-
-/* Add custom keycodes for control layer. Unused entries keep the stock
-   keycode values, so VIA keeps showing the same codes. */
-enum my_keycodes {
-  PKC_UNUSED_TGL_MIRROR = SAFE_RANGE,
-  PKC_TGL_VERT_SCRL,
-  PKC_TGL_HORIZ_SCRL,
-  PKC_UNUSED_TGL_DRAG_SCRL,
-  PKC_NIRI,
-  PKC_UNUSED_DRAG_SCROLL,
-  PKC_ADJUST_LED_BRIGHTNESS,
-  PKC_BLINKY_DPI_CONFIG,
-  PKC_TGL_BOTTOM_RIGHT,
-  PKC_BOTTOM_RIGHT
-};
+/* Custom keycodes (PKC_*) are generated into settings_catalog.h from
+   settings.toml. */
 
 /* Layer names. */
 enum {
@@ -129,7 +102,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 /* ============================ Niri navigation ============================ */
 
 /* While PKC_NIRI is held, the pointer stays still and ball motion becomes
-   Niri steps, one per NIRI_FLICK_THRESHOLD counts on the dominant axis. The
+   Niri steps, one per niri.flick_threshold counts on the dominant axis. The
    first step opens the overview; releasing closes it. A short press with no
    step and no other button toggles the overview.
    Bound in ~/.config/niri/cfg/keybinds.kdl ("Ploopy hold mode"). */
@@ -174,7 +147,7 @@ static void niri_release(void) {
     if (niri_overview_open) {
         tap_code16(NIRI_OVERVIEW_CLOSE);
         niri_overview_open = false;
-    } else if (!niri_acted && timer_elapsed(niri_press_timer) < NIRI_TAP_TERM) {
+    } else if (!niri_acted && timer_elapsed(niri_press_timer) < eli_settings.niri_tap_term) {
         tap_code16(NIRI_OVERVIEW_TOGGLE);
     }
 }
@@ -183,7 +156,7 @@ static void niri_release(void) {
 static report_mouse_t niri_task(report_mouse_t mouse_report) {
     if (mouse_report.x != 0 || mouse_report.y != 0) {
         niri_motion_timer = timer_read();
-    } else if (timer_elapsed(niri_motion_timer) > NIRI_IDLE_RESET_MS) {
+    } else if (timer_elapsed(niri_motion_timer) > eli_settings.niri_idle_reset) {
         niri_acc_x = 0;
         niri_acc_y = 0;
     }
@@ -193,7 +166,7 @@ static report_mouse_t niri_task(report_mouse_t mouse_report) {
     mouse_report.x = 0;
     mouse_report.y = 0;
 
-    if (abs(niri_acc_x) >= NIRI_FLICK_THRESHOLD || abs(niri_acc_y) >= NIRI_FLICK_THRESHOLD) {
+    if (abs(niri_acc_x) >= eli_settings.niri_flick_threshold || abs(niri_acc_y) >= eli_settings.niri_flick_threshold) {
         if (abs(niri_acc_x) >= abs(niri_acc_y)) {
             niri_step(niri_acc_x > 0 ? NIRI_RIGHT : NIRI_LEFT);
         } else {
@@ -240,17 +213,9 @@ layer_state_t layer_state_set_user(layer_state_t state) {
     return state;
 }
 
-/* Set sane defaults when EEPROM is reset. */
+/* A full EEPROM wipe resets every setting to its firmware default. */
 void eeconfig_init_user(void) {
-
-    user_config.raw = 0;
-
-    user_config.horizontal_scroll_arrows = false;   // False = Scroll events, True = left/right arrows.
-    user_config.vertical_scroll_arrows = false;     // False = Scroll events, True = up/down arrows.
-    user_config.led_brightness = 4;                 // Brightest mode by default.
-    user_config.bottom_right_drag_scroll = false;   // False = middle click, True = hold to drag scroll.
-
-    eeconfig_update_user(user_config.raw);
+    settings_reset();
 }
 
 void keyboard_pre_init_user(void) {
@@ -298,8 +263,6 @@ void keyboard_post_init_user(void) {
 
     /* =================== Persistent Configuration Setup ================== */
 
-    /* Load up configuration details from the EEPROM. */
-    user_config.raw = eeconfig_read_user();
 
 
     /* ============================ Lighting Setup ========================= */
@@ -311,11 +274,37 @@ void keyboard_post_init_user(void) {
     rgblight_enable_noeeprom();
     rgblight_mode_noeeprom(RGBLIGHT_MODE_STATIC_LIGHT);
 
-    /* Set an initial colour to establish a baseline brightness for the RGB layers. */
-    rgblight_sethsv(0, 0, RGBLIGHT_VAL_STEP * user_config.led_brightness);
+    /* Load settings and apply them. This also sets the baseline brightness
+       for the RGB layers and overrides the board's DPI. */
+    settings_init();
 }
 
 static bool bottom_right_dragging = false;
+
+/* bottom_right.mode options, in catalog order. */
+enum { BOTTOM_RIGHT_MIDDLE_CLICK = 0, BOTTOM_RIGHT_DRAG_SCROLL };
+
+/* The Control layer DPI button steps through these. The DPI setting itself
+   takes any value; a press moves to the next preset above it. */
+static const uint16_t dpi_presets[] = {600, 900, 1200, 1600, 2400};
+
+static uint8_t next_dpi_preset(void) {
+    for (uint8_t i = 0; i < ARRAY_SIZE(dpi_presets); i++) {
+        if (dpi_presets[i] > eli_settings.pointer_dpi) {
+            return i;
+        }
+    }
+    return 0;
+}
+
+/* Drag scroll divisors for ploopyco.c (see config.h). Stored x100. */
+float eli_dragscroll_divisor_h(void) {
+    return eli_settings.drag_scroll_divisor_h / 100.0f;
+}
+
+float eli_dragscroll_divisor_v(void) {
+    return eli_settings.drag_scroll_divisor_v / 100.0f;
+}
 
 bool process_record_user(uint16_t keycode, keyrecord_t* record) {
     /* Any other button pressed during a Niri hold cancels the overview tap. */
@@ -326,10 +315,10 @@ bool process_record_user(uint16_t keycode, keyrecord_t* record) {
     switch (keycode) {
         case PKC_TGL_VERT_SCRL:
             if (record->event.pressed) {
-                user_config.vertical_scroll_arrows ^= 1;
-                eeconfig_update_user(user_config.raw);
+                eli_settings.wheels_vertical_arrows ^= 1;
+                settings_save();
 
-                if( user_config.vertical_scroll_arrows ) {
+                if( eli_settings.wheels_vertical_arrows ) {
                     rgblight_blink_layer(OPTION_CHANGED_LAYER_COLOUR, OPTION_CHANGE_BLINK_TIMEOUT*2);
                     dprintf("Vert. scroll = arrows.\n");
                 }
@@ -341,10 +330,10 @@ bool process_record_user(uint16_t keycode, keyrecord_t* record) {
             return true;
         case PKC_TGL_HORIZ_SCRL:
             if (record->event.pressed) {
-                user_config.horizontal_scroll_arrows ^= 1;
-                eeconfig_update_user(user_config.raw);
+                eli_settings.wheels_horizontal_arrows ^= 1;
+                settings_save();
 
-                if( user_config.horizontal_scroll_arrows ) {
+                if( eli_settings.wheels_horizontal_arrows ) {
                     rgblight_blink_layer(OPTION_CHANGED_LAYER_COLOUR, OPTION_CHANGE_BLINK_TIMEOUT*2);
                     dprintf("Horiz. scroll = arrows.\n");
                 }
@@ -356,10 +345,10 @@ bool process_record_user(uint16_t keycode, keyrecord_t* record) {
             return true;
         case PKC_TGL_BOTTOM_RIGHT:
             if (record->event.pressed) {
-                user_config.bottom_right_drag_scroll ^= 1;
-                eeconfig_update_user(user_config.raw);
+                eli_settings.bottom_right_mode ^= 1;
+                settings_save();
 
-                if( user_config.bottom_right_drag_scroll ) {
+                if( eli_settings.bottom_right_mode == BOTTOM_RIGHT_DRAG_SCROLL ) {
                     rgblight_blink_layer(OPTION_CHANGED_LAYER_COLOUR, OPTION_CHANGE_BLINK_TIMEOUT*2);
                     dprintf("Bottom right = drag scroll.\n");
                 }
@@ -373,7 +362,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t* record) {
             /* Remember the mode at press time, so the release always undoes
                what the press did. */
             if (record->event.pressed) {
-                bottom_right_dragging = user_config.bottom_right_drag_scroll;
+                bottom_right_dragging = eli_settings.bottom_right_mode == BOTTOM_RIGHT_DRAG_SCROLL;
             }
             if (bottom_right_dragging) {
                 is_drag_scroll = record->event.pressed;
@@ -401,13 +390,13 @@ bool process_record_user(uint16_t keycode, keyrecord_t* record) {
                     rgblight_decrease_val_noeeprom();
                     rgblight_decrease_val_noeeprom();
                     rgblight_decrease_val_noeeprom();
-                    user_config.led_brightness = 1;
-                    eeconfig_update_user(user_config.raw);
+                    eli_settings.led_brightness = 1;
+                    settings_save();
                 }
                 else {
                     rgblight_increase_val_noeeprom();
-                    user_config.led_brightness += 1;
-                    eeconfig_update_user(user_config.raw);
+                    eli_settings.led_brightness += 1;
+                    settings_save();
                 }
 
                 dprintf("Adjusted LED brightness. Current brightness = %d/255\n", rgblight_get_val());
@@ -415,10 +404,13 @@ bool process_record_user(uint16_t keycode, keyrecord_t* record) {
             return true;
         case PKC_BLINKY_DPI_CONFIG:
             if (record->event.pressed) {
-                cycle_dpi();
+                uint8_t preset = next_dpi_preset();
+                eli_settings.pointer_dpi = dpi_presets[preset];
+                settings_apply();
+                settings_save();
 
-                dprintf("DPI changed. Current DPI = %d\n", dpi_array[keyboard_config.dpi_config]);
-                rgblight_blink_layer_repeat(OPTION_CHANGED_LAYER_COLOUR, OPTION_CHANGE_BLINK_TIMEOUT, keyboard_config.dpi_config + 1);
+                dprintf("DPI changed. Current DPI = %d\n", eli_settings.pointer_dpi);
+                rgblight_blink_layer_repeat(OPTION_CHANGED_LAYER_COLOUR, OPTION_CHANGE_BLINK_TIMEOUT, preset + 1);
             }
             return true;
         default:
@@ -537,7 +529,7 @@ report_mouse_t pointing_device_task_user(report_mouse_t mouse_report) {
 
         /* If scroll arrow mode is activated for horizontal scrolling, then we do that.
            This behaviour is the same across OSes. */
-        if( user_config.horizontal_scroll_arrows ) {
+        if( eli_settings.wheels_horizontal_arrows ) {
 
             rightwheel_arrow_scroll_tick += rightwheel_delta;
 
@@ -555,7 +547,7 @@ report_mouse_t pointing_device_task_user(report_mouse_t mouse_report) {
 
         /* If scroll arrow mode is activated for vertical scrolling, then we do that.
            This behaviour is the same across OSes. */
-        if( user_config.vertical_scroll_arrows ) {
+        if( eli_settings.wheels_vertical_arrows ) {
 
             leftwheel_arrow_scroll_tick += leftwheel_delta;
 
@@ -605,13 +597,13 @@ report_mouse_t pointing_device_task_user(report_mouse_t mouse_report) {
             }
 
             if( rightwheel_lowres_scroll_tick > TMAG5273_LOWRES_TICK_SIZE ) {
-                if( !user_config.horizontal_scroll_arrows ) {
+                if( !eli_settings.wheels_horizontal_arrows ) {
                     mouse_report.h = 1;
                 }
                 rightwheel_lowres_scroll_tick = 0;
             }
             else if( rightwheel_lowres_scroll_tick < -TMAG5273_LOWRES_TICK_SIZE ) {
-                if( !user_config.horizontal_scroll_arrows ) {
+                if( !eli_settings.wheels_horizontal_arrows ) {
                     mouse_report.h = -1;
                 }
                 rightwheel_lowres_scroll_tick = 0;

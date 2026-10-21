@@ -20,14 +20,21 @@
 
 #define DYNAMIC_KEYMAP_LAYER_COUNT 8
 
-/* Eli: holding the left wheel turns ball motion into Niri navigation chords. */
-#define NIRI_FLICK_THRESHOLD 200 // raw counts per step (acceleration is bypassed while held)
-#define NIRI_TAP_TERM 250        // a shorter press with no step toggles the overview
-#define NIRI_IDLE_RESET_MS 200   // drop partial motion after this long without movement
+/* Eli: tuning values are runtime settings now (settings.toml). */
 
-/* Eli: drag scroll (Bottom Right in drag mode) about 25% faster than stock
-   (stock H 1.0, V 0.3; lower = faster). */
+/* Settings live in the VIA custom config after the accel module's 20 bytes.
+   Never change this size: it moves the dynamic keymap. settings_catalog.h
+   checks it against settings.toml. */
+#define VIA_EEPROM_CUSTOM_CONFIG_SIZE 128
+#define VIA_EEPROM_CUSTOM_CONFIG_ERROR_OVERRIDE
+
+/* Drag scroll (Bottom Right in drag mode) reads its divisors from settings.
+   ploopyco.c uses these macros, so it needs the prototypes. */
 #undef PLOOPY_DRAGSCROLL_DIVISOR_H
-#define PLOOPY_DRAGSCROLL_DIVISOR_H 0.8
+#define PLOOPY_DRAGSCROLL_DIVISOR_H eli_dragscroll_divisor_h()
 #undef PLOOPY_DRAGSCROLL_DIVISOR_V
-#define PLOOPY_DRAGSCROLL_DIVISOR_V 0.24
+#define PLOOPY_DRAGSCROLL_DIVISOR_V eli_dragscroll_divisor_v()
+#if !defined(__ASSEMBLER__)
+float eli_dragscroll_divisor_h(void);
+float eli_dragscroll_divisor_v(void);
+#endif
