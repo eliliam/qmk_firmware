@@ -228,7 +228,10 @@ Where the build differs from the text above, the code and `AGENTS.md` win:
   driver rounds down to 100.
 - The CLI uses hidapi's `hidraw` module, and it skips replies meant for VIA.
 - The udev rule matches `ENV{ID_USB_INTERFACE_NUM}`, and it has no uaccess
-  tag: the hidraw nodes are already `root:users 0660`.
+  tag. Access currently comes from `/etc/udev/rules.d/92-viia.rules`, a
+  hand-made rule (no package, not in dotfiles) that makes every hidraw node
+  `root:users 0660`. Without it, `ploopy` and VIA fail with a permission
+  error.
 - Accel drift allows ±1 slider step, because the module truncates.
 - `via_init_kb()` resets the dynamic keymap when the settings store is
   missing (first flash, or a size change).
