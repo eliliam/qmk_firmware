@@ -9,7 +9,7 @@ def cat():
 
 
 def test_loads_all_settings(cat):
-    assert len(cat.settings) == 15
+    assert len(cat.settings) == 16
     assert len(cat.keycodes) == 7
     assert cat.setting("pointer.dpi").default == 900
     assert cat.keycodes[2] == Keycode("PKC_NIRI", 0x7E04, cat.keycodes[2].label)
@@ -91,3 +91,8 @@ def test_accel_raw_roundtrip_exact(cat):
                 value = s.decode(raw.to_bytes(2, "big"))
                 if s.min <= value <= s.max:
                     assert int.from_bytes(s.encode(value), "big") == raw, (s.name, raw)
+
+
+def test_vertical_direction_setting(cat):
+    s = cat.setting("wheels.vertical_direction")
+    assert (s.id, s.channel, s.options, s.default) == (11, 42, ("clockwise_up", "clockwise_down"), "clockwise_up")

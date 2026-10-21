@@ -27,7 +27,8 @@ _Static_assert(VIA_EEPROM_CUSTOM_CONFIG_SIZE == 128, "VIA_EEPROM_CUSTOM_CONFIG_S
     X(wheels_horizontal_arrows, 7, uint8_t, 0, 0, 1) \
     X(bottom_right_mode, 8, uint8_t, 0, 0, 1) \
     X(led_brightness, 9, uint8_t, 4, 1, 4) \
-    X(pointer_dpi, 10, uint16_t, 900, 100, 12000)
+    X(pointer_dpi, 10, uint16_t, 900, 100, 12000) \
+    X(wheels_vertical_direction, 11, uint8_t, 0, 0, 1)
 
 /* Stored at ELI_SETTINGS_STORE_OFFSET in the VIA custom config. New fields
    are only ever appended. */
@@ -45,6 +46,7 @@ typedef struct __attribute__((packed)) {
     uint8_t bottom_right_mode;
     uint8_t led_brightness;
     uint16_t pointer_dpi;
+    uint8_t wheels_vertical_direction;
 } eli_settings_t;
 
 _Static_assert(ELI_SETTINGS_STORE_OFFSET + sizeof(eli_settings_t) <= VIA_EEPROM_CUSTOM_CONFIG_SIZE, "settings store does not fit");

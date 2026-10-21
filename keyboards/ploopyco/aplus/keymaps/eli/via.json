@@ -155,6 +155,25 @@
                 42,
                 7
               ]
+            },
+            {
+              "label": "Left wheel clockwise scrolls",
+              "type": "dropdown",
+              "options": [
+                [
+                  "Clockwise up",
+                  0
+                ],
+                [
+                  "Clockwise down",
+                  1
+                ]
+              ],
+              "content": [
+                "id_wheels_vertical_direction",
+                42,
+                11
+              ]
             }
           ]
         },

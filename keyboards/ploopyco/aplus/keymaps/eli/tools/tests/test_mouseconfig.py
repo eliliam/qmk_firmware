@@ -20,6 +20,7 @@ divisor_v = 0.24
 [settings.wheels]
 vertical_arrows = false
 horizontal_arrows = false
+vertical_direction = "clockwise_up"
 
 [settings.bottom_right]
 mode = "middle_click"

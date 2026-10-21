@@ -22,7 +22,7 @@
    - Holding the left wheel navigates Niri instead of making mouse gestures
      (see "Niri navigation" below). The gestures module is not used.
    - Right-handed only: the mirror layer and drag scroll are removed.
-   - Left wheel clockwise scrolls up (stock scrolls down).
+   - Left wheel scroll direction is a setting (wheels.vertical_direction).
    - Bottom Right is middle click or hold-to-drag-scroll. Control layer Bottom
      Right switches between them; Control layer Bottom Left enters the
      bootloader.
@@ -283,6 +283,8 @@ static bool bottom_right_dragging = false;
 
 /* bottom_right.mode options, in catalog order. */
 enum { BOTTOM_RIGHT_MIDDLE_CLICK = 0, BOTTOM_RIGHT_DRAG_SCROLL };
+/* wheels.vertical_direction options, in catalog order. */
+enum { VERTICAL_CLOCKWISE_UP = 0, VERTICAL_CLOCKWISE_DOWN };
 
 /* The Control layer DPI button steps through these. The DPI setting itself
    takes any value; a press moves to the next preset above it. */
@@ -524,8 +526,10 @@ report_mouse_t pointing_device_task_user(report_mouse_t mouse_report) {
         }
 
         /* The left wheel scrolls vertically. Stock turns clockwise into scrolling
-           down; flip it so clockwise scrolls up. */
-        leftwheel_delta = -leftwheel_delta;
+           down; wheels.vertical_direction can flip it so clockwise scrolls up. */
+        if (eli_settings.wheels_vertical_direction == VERTICAL_CLOCKWISE_UP) {
+            leftwheel_delta = -leftwheel_delta;
+        }
 
         /* If scroll arrow mode is activated for horizontal scrolling, then we do that.
            This behaviour is the same across OSes. */

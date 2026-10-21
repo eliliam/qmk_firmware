@@ -141,6 +141,15 @@ default = 900
 label = "DPI (the sensor rounds down to a multiple of 100)"
 group = "Pointer"
 
+[[setting]]
+name = "wheels.vertical_direction"
+id = 11
+type = "enum"
+options = ["clockwise_up", "clockwise_down"]
+default = "clockwise_up"
+label = "Left wheel clockwise scrolls"
+group = "Wheels"
+
 # The accel module's own VIA channel. via_min/via_max are the module's
 # projection range for its 0-60000 slider; min/max are what we accept.
 
