@@ -88,8 +88,8 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
                                         MS_BTN1, PKC_BOTTOM_RIGHT,
                                         PKC_NIRI, TG(LAYER_CONTROL) ),
     // Layer for all of the customization options.
-    [LAYER_CONTROL] = LAYOUT(           PKC_BLINKY_DPI_CONFIG, PKC_ADJUST_LED_BRIGHTNESS, PKC_TGL_VERT_SCRL, PKC_TGL_HORIZ_SCRL,
-                                        QK_BOOT, PKC_TGL_BOTTOM_RIGHT,
+    [LAYER_CONTROL] = LAYOUT(           QK_BOOT, PKC_ADJUST_LED_BRIGHTNESS, PKC_TGL_VERT_SCRL, PKC_TGL_HORIZ_SCRL,
+                                        PKC_BLINKY_DPI_CONFIG, PKC_TGL_BOTTOM_RIGHT,
                                         TG(LAYER_CONTROL), TG(LAYER_CONTROL) ),
     [2] = LAYOUT( _______, _______, _______, _______, _______, _______, _______, _______ ),
     [3] = LAYOUT( _______, _______, _______, _______, _______, _______, _______, _______ ),
@@ -312,6 +312,14 @@ bool process_record_user(uint16_t keycode, keyrecord_t* record) {
     /* Any other button pressed during a Niri hold cancels the overview tap. */
     if (niri_hold && keycode != PKC_NIRI && record->event.pressed) {
         niri_acted = true;
+    }
+
+    /* On/off toggles return to the base layer after one press; the cycling
+       keys (DPI, LED brightness) stay so they can be pressed again. Leave on
+       release: QMK resolves the press action after this function returns, so
+       leaving on press would also fire the base layer's key (right click on TRR). */
+    if (!record->event.pressed && (keycode == PKC_TGL_VERT_SCRL || keycode == PKC_TGL_HORIZ_SCRL || keycode == PKC_TGL_BOTTOM_RIGHT)) {
+        layer_off(LAYER_CONTROL);
     }
 
     switch (keycode) {

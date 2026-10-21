@@ -72,8 +72,8 @@ on the flashed mouse.
 
   This keymap lives on branch `eli-aplus` of Ploopy's fork. `modules/drashna`
   must be a clone of drashna/qmk_modules.
-- **Flash:** ask Eli to press the right wheel (Control layer), then Bottom
-  Left (`QK_BOOT`). The `RPI-RP2` drive does not automount: run
+- **Flash:** ask Eli to press the right wheel (Control layer), then the
+  far-left top button (`QK_BOOT`). The `RPI-RP2` drive does not automount: run
   `udisksctl mount -b "$(readlink -f /dev/disk/by-label/RPI-RP2)"`, then copy
   `ploopyco_aplus_rev2_001_eli.uf2` to the mount point it prints. The stock rollback image is `ploopyco_aplus_stock.uf2` in the
   repository root.
